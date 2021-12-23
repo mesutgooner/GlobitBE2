@@ -7,11 +7,13 @@ import java.io.File;
 import java.util.List;
 
 public interface EmployeeService {
-    EmployeeDTO saveOrUpdate(EmployeeDTO dto);
+    Object saveOrUpdate(EmployeeDTO dto);
 
     List<EmployeeDTO> search(EmployeeSearchDTO dto);
 
     void delete(Long id);
 
     File exportExcel();
+
+
 }

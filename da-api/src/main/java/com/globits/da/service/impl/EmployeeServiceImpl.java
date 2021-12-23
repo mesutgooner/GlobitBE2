@@ -2,6 +2,7 @@ package com.globits.da.service.impl;
 
 import com.globits.da.domain.Employee;
 import com.globits.da.dto.EmployeeDTO;
+import com.globits.da.dto.ResponseMessage;
 import com.globits.da.dto.search.EmployeeSearchDTO;
 import com.globits.da.repository.EmployeeRepository;
 import com.globits.da.service.EmployeeService;
@@ -11,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import javax.mail.internet.AddressException;
+import javax.mail.internet.InternetAddress;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -23,17 +26,67 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Autowired
     private EmployeeRepository employeeRepository;
     @Override
-    public EmployeeDTO saveOrUpdate(EmployeeDTO dto) {
+    public Object saveOrUpdate(EmployeeDTO dto) {
+        ResponseMessage msg= new ResponseMessage();
+        msg.setMsg("");
         if (dto!=null){
-            Employee result = null;
-            if (dto.getId()!=null){
-                result = employeeRepository.getOne(dto.getId());
+            //validate code
+            if (dto.getCode()==null && !StringUtils.hasText(dto.getCode())){
+                msg.setMsg(msg.getMsg()+"Code không được bỏ trống\n");
+            } else {
+                if (dto.getCode().length()<6 || dto.getCode().length()>10){
+                    msg.setMsg(msg.getMsg()+"Code phải dài tối thiểu 6 kí tự và tối đa 10 kí tự\n");
+                }
+                if (StringUtils.containsWhitespace(dto.getCode()))
+                    msg.setMsg(msg.getMsg()+"Code không được có khoảng trắng\n");
+                if (!employeeRepository.findAllByCode(dto.getCode()).isEmpty())
+                    msg.setMsg(msg.getMsg()+"Code đã tồn tại\n");
             }
-            result = new Employee(dto);
-            employeeRepository.save(result);
-            return new EmployeeDTO(result);
+            //validate name
+            if (dto.getName()==null || !StringUtils.hasText(dto.getName())){
+                msg.setMsg(msg.getMsg()+"Tên không được bỏ trống\n");
+            }
+            //validate email
+            if (dto.getEmail()==null || !StringUtils.hasText(dto.getEmail())){
+                msg.setMsg(msg.getMsg()+"Email không được bỏ trống\n");
+            } else {
+                try{
+                    InternetAddress address = new InternetAddress(dto.getEmail());
+                    address.validate();
+                } catch (AddressException e) {
+                    msg.setMsg(msg.getMsg()+"Email chưa đúng định dạng\n");
+                    e.printStackTrace();
+                }
+            }
+            //validate phone
+            if (dto.getPhone()==null || !StringUtils.hasText(dto.getPhone())){
+                msg.setMsg(msg.getMsg()+"SDT không được bỏ trống\n");
+            } else {
+                if (!dto.getPhone().matches("[0-9]+")){
+                    msg.setMsg(msg.getMsg()+"SDT chỉ được phép điền số\n");
+                }
+                if (dto.getPhone().length()!=10){
+                    msg.setMsg(msg.getMsg()+"SDT phải có đủ 10 chữ số\n");
+                }
+            }
+            //validate age
+            if (dto.getAge()==null)
+                msg.setMsg(msg.getMsg()+"Tuổi không được bỏ trống\n");
+            else if (dto.getAge()<=0)
+                msg.setMsg(msg.getMsg()+"Tuổi không hợp lệ");
+
+            //validated->save
+            if (msg.getMsg().isEmpty() || msg.getMsg().equals("")){
+                Employee result = null;
+                if (dto.getId()!=null){
+                    result = employeeRepository.getOne(dto.getId());
+                }
+                result = new Employee(dto);
+                employeeRepository.save(result);
+                return new EmployeeDTO(result);
+            }
         }
-        return null;
+        return msg;
     }
 
     @Override
